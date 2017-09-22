@@ -21,13 +21,15 @@ class Message {
 class TextMessage extends Message {
   // Represents an incoming message from the chat.
   //
-  // user - A User instance that sent the message.
-  // text - A String message.
-  // id   - A String of the message ID.
-  constructor (user, text, id) {
+  // user    - A User instance that sent the message.
+  // text    - A String message. It might be modified by some adapters.
+  // id      - A String of the message ID.
+  // rawText - A String raw message not formatted strings(ex: in markdown).
+  constructor (user, text, id, rawText) {
     super(user)
     this.text = text
     this.id = id
+    this.rawText = rawText
   }
 
   // Determines if the message matches the given regex.
