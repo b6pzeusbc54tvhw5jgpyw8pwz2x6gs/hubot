@@ -122,31 +122,51 @@ class Robot {
   //
   // Returns RegExp.
   respondPattern (regex) {
-    const regexWithoutModifiers = regex.toString().split('/')
-    regexWithoutModifiers.shift()
-    const modifiers = regexWithoutModifiers.pop()
-    const regexStartsWithAnchor = regexWithoutModifiers[0] && regexWithoutModifiers[0][0] === '^'
-    const pattern = regexWithoutModifiers.join('/')
     const name = this.name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')
+    const splited = regex.toString().split('/')
+    let regexWithoutModifiers = splited[1]
+    const modifiers = splited[2]
 
-    if (regexStartsWithAnchor) {
-      this.logger.warning(`Anchors don’t work well with respond, perhaps you want to use 'hear'`)
-      this.logger.warning(`The regex in question was ${regex.toString()}`)
+    let betweenNameAndPattern
+    if( regexWithoutModifiers && regexWithoutModifiers[0] === '^' ) {
+      regexWithoutModifiers = regexWithoutModifiers.substr(1)
+      betweenNameAndPattern = '\\s*'
+    } else {
+      betweenNameAndPattern = '.*\\s*'
     }
+    const pattern = [ regexWithoutModifiers ].join('/')
 
     if (!this.alias) {
-      return new RegExp('^\\s*[@]?' + name + '[:,]?\\s*(?:' + pattern + ')', modifiers)
+      return new RegExp('^\\s*[@]?' + name + '[:,]?'+ betweenNameAndPattern +'(?:' + pattern + ')', modifiers)
     }
 
     const alias = this.alias.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')
 
     // matches properly when alias is substring of name
     if (name.length > alias.length) {
-      return new RegExp('^\\s*[@]?(?:' + name + '[:,]?|' + alias + '[:,]?)\\s*(?:' + pattern + ')', modifiers)
+      return new RegExp('^\\s*[@]?(?:' + name + '[:,]?|' + alias + '[:,]?)'+betweenNameAndPattern+'(?:' + pattern + ')', modifiers)
     }
 
     // matches properly when name is substring of alias
-    return new RegExp('^\\s*[@]?(?:' + alias + '[:,]?|' + name + '[:,]?)\\s*(?:' + pattern + ')', modifiers)
+    return new RegExp('^\\s*[@]?(?:' + alias + '[:,]?|' + name + '[:,]?)'+betweenNameAndPattern+'(?:' + pattern + ')', modifiers)
+  }
+
+  // Public: Adds a Listener that attempts to match
+  // incoming messages and incoming messages directed
+  // at the robot based on a Regex. All regexes treat patterns like they begin
+  // with a '^'
+  // If regex starts with a '^', hearAndRespond remove this.
+  //
+  // regex    - A Regex that determines if the callback should be called.
+  // options  - An Object of additional parameters keyed on extension name
+  //            (optional).
+  // callback - A Function that is called with a Response object.
+  //
+  // Returns nothing.
+  hearAndRespond (regex, options, callback) {
+    const respondPattern = this.respondPattern(regex)
+    const matcher = ({ text }) => regex.test(text) || respondPattern.test(text)
+    this.listeners.push(new Listener.Listener(this, matcher, options, callback))
   }
 
   // Public: Adds a Listener that triggers when anyone enters the room.
